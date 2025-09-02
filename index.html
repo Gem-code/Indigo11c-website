@@ -56,25 +56,25 @@
 
     </div>
 
-    <!-- ADD THIS BLOCK FOR FIREBASE CONFIG -->
+    <!-- Your Firebase config goes here -->
     <script>
-      // Replace the object below with your actual Firebase config from your Firebase Console
       window.__firebase_config = JSON.stringify({
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_AUTH_DOMAIN",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_STORAGE_BUCKET",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyB0ITwkogFzILz8Wfmz9zwuBJvtNBAsoTg",
+        authDomain: "indigo11cappointment.firebaseapp.com",
+        projectId: "indigo11cappointment",
+        storageBucket: "indigo11cappointment.firebasestorage.app",
+        messagingSenderId: "757509071845",
+        appId: "1:757509071845:web:6bdf9a5e25e324d9f2850c",
+        measurementId: "G-8TBMDP8QVW"
       });
-      window.__app_id = "default-app-id"; // Or your preferred app ID
+      window.__app_id = "default-app-id";
     </script>
 
-    <!-- MAIN SCRIPT -->
+    <!-- Main App Script -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
 
         let db;
         let auth;
