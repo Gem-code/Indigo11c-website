@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -27,6 +27,7 @@
         <!-- Showing times container -->
         <div id="showings-container" class="space-y-4">
             <!-- Appointments will be dynamically added here -->
+            <div class="text-center text-gray-500 mt-8">Loading available time slots...</div>
         </div>
 
         <!-- Appointment Modal (Initially hidden) -->
@@ -56,11 +57,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Enable debug logging for Firestore
-        setLogLevel('debug');
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // Global variables for Firebase
         let db;
@@ -101,10 +98,11 @@
             const sunday = getNextDay(0); // 0 is Sunday
             
             // To ensure we always show the next two upcoming dates, adjust if today is the day of an open house
-            if (wednesday.toDateString() === new Date().toDateString()) {
+            const today = new Date();
+            if (wednesday.toDateString() === today.toDateString() && today.getHours() >= 19) { // 7 PM
                 wednesday.setDate(wednesday.getDate() + 7);
             }
-            if (sunday.toDateString() === new Date().toDateString()) {
+            if (sunday.toDateString() === today.toDateString() && today.getHours() >= 15) { // 3 PM
                 sunday.setDate(sunday.getDate() + 7);
             }
 
@@ -203,14 +201,20 @@
         // Initialize the app with authentication
         async function initializeAppWithAuth() {
             try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
-                // Fetch and render data
-                fetchAndRenderShowings();
+                // Use onAuthStateChanged for a more robust initialization
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        // User is signed in, fetch and render the showings
+                        fetchAndRenderShowings();
+                    } else {
+                        // No user is signed in, sign in anonymously or with a custom token
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                });
 
             } catch (error) {
                 console.error("Error initializing app with authentication:", error);
