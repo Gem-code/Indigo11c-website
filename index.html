@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -201,23 +201,20 @@
         // Initialize the app with authentication
         async function initializeAppWithAuth() {
             try {
-                // Use onAuthStateChanged for a more robust initialization
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        // User is signed in, fetch and render the showings
-                        fetchAndRenderShowings();
-                    } else {
-                        // No user is signed in, sign in anonymously or with a custom token
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    }
-                });
+                // First, sign in anonymously or with the custom token
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                // Once authenticated, fetch and render the showings
+                fetchAndRenderShowings();
 
             } catch (error) {
                 console.error("Error initializing app with authentication:", error);
+                // Display a user-friendly error message if the app can't connect
+                showingsContainer.innerHTML = `<div class="text-center text-red-500 mt-8">Sorry, there was an error loading the time slots. Please try again later.</div>`;
             }
         }
         
