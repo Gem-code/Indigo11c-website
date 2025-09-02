@@ -46,7 +46,9 @@
                         <label for="email" class="block text-gray-700 font-medium mb-1">Email</label>
                         <input type="email" id="email" name="email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                     </div>
-                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">Confirm</button>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                        Sign Up
+                    </button>
                 </form>
                 <p id="success-message" class="text-green-600 font-medium mt-4 text-center hidden">Thank you! Your appointment has been scheduled.</p>
             </div>
@@ -54,33 +56,39 @@
 
     </div>
 
+    <!-- ADD THIS BLOCK FOR FIREBASE CONFIG -->
+    <script>
+      // Replace the object below with your actual Firebase config from your Firebase Console
+      window.__firebase_config = JSON.stringify({
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_AUTH_DOMAIN",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+      });
+      window.__app_id = "default-app-id"; // Or your preferred app ID
+    </script>
+
+    <!-- MAIN SCRIPT -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        // IMPORTANT: Replace this with your actual Firebase project config.
-        // You can find this in your Firebase console under Project settings.
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        
-        // This is a placeholder for the appId, which is not tied to the Firebase config.
-        // It helps ensure all data is stored in the correct project-specific path.
-        const appId = "gem-code-11c";
+        let db;
+        let auth;
+        let appId;
         const SHOWINGS_COLLECTION = 'showings';
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        const firebaseConfig = JSON.parse(window.__firebase_config);
+        const initialAuthToken = typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : null;
+        appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'default-app-id';
 
-        // UI elements
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+
         const showingsContainer = document.getElementById('showings-container');
         const modal = document.getElementById('modal');
         const modalTitle = document.getElementById('modal-title');
@@ -89,7 +97,6 @@
 
         let selectedShowing = null;
 
-        // Function to get the date of the next specific day of the week
         function getNextDay(dayOfWeek) {
             const today = new Date();
             const resultDate = new Date(today);
@@ -97,12 +104,10 @@
             return resultDate;
         }
 
-        // Generate dynamic showings
         function generateShowingsData() {
             const wednesday = getNextDay(3); // 3 is Wednesday
             const sunday = getNextDay(0); // 0 is Sunday
             
-            // To ensure we always show the next two upcoming dates, adjust if today is the day of an open house
             const today = new Date();
             if (wednesday.toDateString() === today.toDateString() && today.getHours() >= 19) { // 7 PM
                 wednesday.setDate(wednesday.getDate() + 7);
@@ -112,7 +117,6 @@
             }
 
             const showings = [];
-            // Use Intl.DateTimeFormat for robust date formatting
             const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
             const wednesdayString = formatter.format(wednesday);
@@ -133,7 +137,6 @@
             return showings;
         }
 
-        // Open the modal for a specific showing
         window.openModal = function(id, date, time) {
             selectedShowing = { id, date, time };
             modalTitle.textContent = `Schedule for ${date} - ${time}`;
@@ -143,12 +146,10 @@
             modal.classList.remove('hidden');
         }
 
-        // Close the modal
         window.closeModal = function() {
             modal.classList.add('hidden');
         }
 
-        // Handle form submission
         window.handleFormSubmit = async function(event) {
             event.preventDefault();
             const name = document.getElementById('name').value;
@@ -160,11 +161,6 @@
             }
 
             try {
-                // Ensure authentication is complete before trying to write to Firestore
-                if (!auth.currentUser) {
-                    await signInAnonymously(auth);
-                }
-
                 const bookingsCollection = collection(db, 'artifacts', appId, 'public/data', SHOWINGS_COLLECTION, selectedShowing.id, 'bookings');
                 await addDoc(bookingsCollection, { name, email, bookedAt: new Date() });
 
@@ -173,11 +169,9 @@
 
             } catch (error) {
                 console.error("Error adding appointment:", error);
-                // In a real app, you'd show a user-facing error message here
             }
         };
 
-        // Fetch and render showings from Firestore in real-time
         function fetchAndRenderShowings() {
             const showingsData = generateShowingsData();
             showingsContainer.innerHTML = '';
@@ -190,13 +184,12 @@
                         <p class="font-medium text-gray-800">${showing.date}</p>
                         <p class="text-gray-600">${showing.time}</p>
                     </div>
-                    <button id="button-${showing.id}" onclick="openModal('${showing.id}', '${showing.date}', '${showing.time}')" class="bg-indigo-600 text-white text-sm font-semibold py-2 px-4 rounded-full shadow hover:bg-indigo-700 transition-colors">
+                    <button id="button-${showing.id}" onclick="openModal('${showing.id}', '${showing.date}', '${showing.time}')" class="bg-indigo-600 text-white text-sm font-semibold py-2 px-4 rounded">
                         Sign Up
                     </button>
                 `;
                 showingsContainer.appendChild(showingElement);
 
-                // Listen for changes to the bookings subcollection
                 const bookingsCollection = collection(db, 'artifacts', appId, 'public/data', SHOWINGS_COLLECTION, showing.id, 'bookings');
                 onSnapshot(bookingsCollection, (snapshot) => {
                     const count = snapshot.size;
@@ -208,18 +201,17 @@
             });
         }
 
-        // Initialize the app with authentication
         async function initializeAppWithAuth() {
             try {
-                // Sign in anonymously since this is a public form
-                await signInAnonymously(auth);
-                
-                // Once authenticated, fetch and render the showings
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
                 fetchAndRenderShowings();
 
             } catch (error) {
                 console.error("Error initializing app with authentication:", error);
-                // Display a user-friendly error message if the app can't connect
                 showingsContainer.innerHTML = `<div class="text-center text-red-500 mt-8">Sorry, there was an error loading the time slots. Please try again later.</div>`;
             }
         }
