@@ -11,121 +11,151 @@
             font-family: 'Inter', sans-serif;
             background-color: #f7fafc;
         }
+        .container {
+            max-width: 800px;
+        }
     </style>
 </head>
-<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
-
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
     <div class="container mx-auto bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2 text-center">Open House Bookings Report</h1>
-        <p class="text-gray-600 mb-6 text-center">Viewing all confirmed appointments for Unit 11C.</p>
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Open House Bookings Report</h1>
+        <p class="text-gray-600 mb-6">Real-time appointments for Unit 11C</p>
 
-        <!-- Bookings List Container -->
-        <div id="bookings-container" class="space-y-4">
-            <div class="text-center text-gray-500 mt-8">Loading bookings...</div>
+        <div id="report-container" class="space-y-6">
+            <!-- Report content will be dynamically generated here -->
+            <div class="flex items-center justify-center h-48 bg-gray-50 rounded-lg">
+                <p class="text-gray-500 text-lg">Loading bookings...</p>
+            </div>
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // IMPORTANT: Use the same Firebase configuration from your public website.
-        const firebaseConfig = {
-            apiKey: "AIzaSyDjPPk9qWjFlvOC3d2hGA9pfuky9S_V0Wk",
-            authDomain: "indigo11cappointment.firebaseapp.com",
-            projectId: "indigo11cappointment",
-            storageBucket: "indigo11cappointment.firebasestorage.app",
-            messagingSenderId: "757509071845",
-            appId: "1:757509071845:web:6bdf9a5e25e324d9f2850c",
-            measurementId: "G-8TBMDP8QVW"
-        };
-        
-        const appId = firebaseConfig.projectId;
+        // Enable debug logging for Firestore
+        setLogLevel('debug');
+
+        // Global variables for Firebase
+        let db;
+        let auth;
+        let appId;
         const SHOWINGS_COLLECTION = 'showings';
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        // Get global variables from canvas environment
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : null);
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        // UI element
-        const bookingsContainer = document.getElementById('bookings-container');
+        // UI elements
+        const reportContainer = document.getElementById('report-container');
 
-        // Fetch and render all bookings
-        async function fetchAndRenderBookings() {
-            try {
-                // Sign in anonymously to get read access
-                await signInAnonymously(auth);
+        // Function to get the date of the next specific day of the week
+        function getNextDay(dayOfWeek) {
+            const today = new Date();
+            const resultDate = new Date(today);
+            resultDate.setDate(today.getDate() + (dayOfWeek + 7 - today.getDay()) % 7);
+            return resultDate;
+        }
 
-                bookingsContainer.innerHTML = '<div class="text-center text-gray-500 mt-8">Loading bookings...</div>';
+        // Generate dynamic showings with the correct IDs
+        function generateShowingsData() {
+            const wednesday = getNextDay(3); // 3 is Wednesday
+            const sunday = getNextDay(0); // 0 is Sunday
+            
+            // To ensure we always show the next two upcoming dates, adjust if today is the day of an open house
+            if (wednesday.toDateString() === new Date().toDateString()) {
+                wednesday.setDate(wednesday.getDate() + 7);
+            }
+            if (sunday.toDateString() === new Date().toDateString()) {
+                sunday.setDate(sunday.getDate() + 7);
+            }
+            
+            const showings = [];
+            const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-                const allBookings = [];
-                const showingsRef = collection(db, 'artifacts', appId, 'public', 'data', SHOWINGS_COLLECTION);
-                
-                // Fetch all showing dates first
-                const showingDocs = await getDocs(showingsRef);
-                
-                if (showingDocs.empty) {
-                    bookingsContainer.innerHTML = '<div class="text-center text-gray-500 mt-8">No bookings found yet.</div>';
-                    return;
-                }
+            showings.push({
+                id: `wed_${wednesday.getFullYear()}_${wednesday.getMonth() + 1}_${wednesday.getDate()}`,
+                date: formatter.format(wednesday),
+                time: '6:00 PM - 7:00 PM'
+            });
 
-                // For each showing date, listen for bookings
-                showingDocs.forEach(async (showingDoc) => {
-                    const showingData = showingDoc.data();
-                    const dateId = showingDoc.id;
-                    const bookingsRef = collection(db, 'artifacts', appId, 'public', 'data', SHOWINGS_COLLECTION, dateId, 'bookings');
-                    
-                    onSnapshot(bookingsRef, (snapshot) => {
-                        snapshot.docChanges().forEach(change => {
-                            if (change.type === "added") {
-                                const booking = {
-                                    id: change.doc.id,
-                                    date: showingData.date,
-                                    time: showingData.time,
-                                    ...change.doc.data()
-                                };
-                                allBookings.push(booking);
-                            }
+            showings.push({
+                id: `sun_${sunday.getFullYear()}_${sunday.getMonth() + 1}_${sunday.getDate()}`,
+                date: formatter.format(sunday),
+                time: '1:00 PM - 3:00 PM'
+            });
+
+            return showings;
+        }
+
+        // Function to fetch and render the report
+        function fetchAndRenderReport() {
+            const showingsData = generateShowingsData();
+            reportContainer.innerHTML = ''; // Clear the container
+
+            showingsData.forEach(showing => {
+                const showingsSection = document.createElement('div');
+                showingsSection.className = 'bg-white p-6 rounded-lg shadow-md';
+                showingsSection.innerHTML = `
+                    <h2 class="text-xl font-semibold text-gray-800 mb-2">${showing.date} - ${showing.time}</h2>
+                    <ul id="bookings-list-${showing.id}" class="space-y-2 text-gray-700 list-disc list-inside ml-4">
+                        <li class="text-gray-500">No bookings yet.</li>
+                    </ul>
+                `;
+                reportContainer.appendChild(showingsSection);
+
+                // Listen for real-time updates to the bookings subcollection
+                const bookingsCollectionPath = `artifacts/${appId}/public/data/${SHOWINGS_COLLECTION}/${showing.id}/bookings`;
+                const bookingsQuery = collection(db, bookingsCollectionPath);
+                const bookingsList = document.getElementById(`bookings-list-${showing.id}`);
+
+                onSnapshot(bookingsQuery, (snapshot) => {
+                    if (snapshot.empty) {
+                        bookingsList.innerHTML = '<li class="text-gray-500">No bookings yet.</li>';
+                    } else {
+                        bookingsList.innerHTML = '';
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            const listItem = document.createElement('li');
+                            listItem.textContent = `${data.name} (${data.email})`;
+                            bookingsList.appendChild(listItem);
                         });
-                        renderBookings(allBookings);
-                    });
+                    }
+                }, (error) => {
+                    console.error("Error fetching bookings:", error);
+                    bookingsList.innerHTML = `<li class="text-red-500">Error loading bookings.</li>`;
                 });
+            });
+        }
+
+        // Initialize the app with authentication
+        async function initializeAppWithAuth() {
+            try {
+                // Initialize Firebase services
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Authenticate the user
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                // Fetch and render the report after successful authentication
+                fetchAndRenderReport();
 
             } catch (error) {
-                console.error("Error fetching bookings:", error);
-                // The error `auth/requests-from-referer-are-blocked` means you need to authorize this domain.
-                // Go to your Firebase Console > Authentication > Settings and add the URL from your browser's address bar
-                // to the list of authorized domains.
-                bookingsContainer.innerHTML = '<div class="text-center text-red-500 mt-8">Sorry, there was an error loading the report. Please check your console for details.</div>';
+                console.error("Error initializing app with authentication:", error);
+                reportContainer.innerHTML = '<p class="text-red-500 text-center">Failed to connect to Firebase. Please check your configuration.</p>';
             }
         }
-
-        // Helper function to render the bookings to the page
-        function renderBookings(bookings) {
-            if (bookings.length === 0) {
-                bookingsContainer.innerHTML = '<div class="text-center text-gray-500 mt-8">No bookings found yet.</div>';
-                return;
-            }
-
-            // Sort bookings by bookedAt date
-            bookings.sort((a, b) => a.bookedAt.toDate() - b.bookedAt.toDate());
-
-            bookingsContainer.innerHTML = bookings.map(booking => `
-                <div class="bg-gray-50 p-4 rounded-md border border-gray-200">
-                    <p class="font-medium text-gray-800">Name: <span class="text-gray-600">${booking.name}</span></p>
-                    <p class="font-medium text-gray-800">Email: <span class="text-gray-600">${booking.email}</span></p>
-                    <p class="font-medium text-gray-800">Date: <span class="text-gray-600">${booking.date}</span></p>
-                    <p class="font-medium text-gray-800">Time: <span class="text-gray-600">${booking.time}</span></p>
-                    <p class="font-medium text-gray-800">Booked At: <span class="text-gray-600">${new Date(booking.bookedAt.toDate()).toLocaleString()}</span></p>
-                </div>
-            `).join('');
-        }
-
-        // Initialize the app
-        fetchAndRenderBookings();
+        
+        initializeAppWithAuth();
     </script>
 </body>
 </html>
