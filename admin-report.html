@@ -32,7 +32,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Enable debug logging for Firestore
@@ -41,9 +41,7 @@
         // Global variables for Firebase
         let db;
         let auth;
-        let appId;
         const SHOWINGS_COLLECTION = 'showings';
-        const APP_ID = 'YOUR_APP_ID_HERE'; // **IMPORTANT: Replace with your actual app ID from Firebase**
 
         // **1. PASTE YOUR FIREBASE CONFIG HERE**
         // You can find this in your Firebase Project Settings -> General
@@ -64,10 +62,6 @@
 
         // 2. DO NOT CHANGE ANYTHING BELOW THIS LINE
         // The code below is designed to work with your configuration.
-
-        // Get global variables from canvas environment
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        appId = typeof __app_id !== 'undefined' ? __app_id : APP_ID;
 
         // UI elements
         const reportContainer = document.getElementById('report-container');
@@ -128,7 +122,7 @@
                 reportContainer.appendChild(showingsSection);
 
                 // Listen for real-time updates to the bookings subcollection
-                const bookingsCollectionPath = `artifacts/${appId}/public/data/${SHOWINGS_COLLECTION}/${showing.id}/bookings`;
+                const bookingsCollectionPath = `artifacts/${firebaseConfig.projectId}/public/data/${SHOWINGS_COLLECTION}/${showing.id}/bookings`;
                 const bookingsQuery = collection(db, bookingsCollectionPath);
                 const bookingsList = document.getElementById(`bookings-list-${showing.id}`);
 
@@ -167,11 +161,7 @@
                 auth = getAuth(app);
 
                 // Authenticate the user
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                await signInAnonymously(auth);
                 
                 // Fetch and render the report after successful authentication
                 fetchAndRenderReport();
