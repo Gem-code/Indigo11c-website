@@ -43,11 +43,31 @@
         let auth;
         let appId;
         const SHOWINGS_COLLECTION = 'showings';
+        const APP_ID = 'YOUR_APP_ID_HERE'; // **IMPORTANT: Replace with your actual app ID from Firebase**
+
+        // **1. PASTE YOUR FIREBASE CONFIG HERE**
+        // You can find this in your Firebase Project Settings -> General
+        // It should look like this:
+        /*
+        const firebaseConfig = {
+          apiKey: "AIzaSy...",
+          authDomain: "your-app.firebaseapp.com",
+          projectId: "your-app",
+          storageBucket: "your-app.appspot.com",
+          messagingSenderId: "123456789",
+          appId: "1:23456789:web:abcdef"
+        };
+        */
+        const firebaseConfig = {
+          // Paste your config details here
+        };
+
+        // 2. DO NOT CHANGE ANYTHING BELOW THIS LINE
+        // The code below is designed to work with your configuration.
 
         // Get global variables from canvas environment
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : null);
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        appId = typeof __app_id !== 'undefined' ? __app_id : APP_ID;
 
         // UI elements
         const reportContainer = document.getElementById('report-container');
@@ -135,9 +155,9 @@
         async function initializeAppWithAuth() {
             try {
                 // Check if Firebase config is available
-                if (!firebaseConfig) {
+                if (Object.keys(firebaseConfig).length === 0 && firebaseConfig.constructor === Object) {
                     console.error("Firebase config is missing.");
-                    reportContainer.innerHTML = '<p class="text-red-500 text-center">Firebase configuration is missing. This app is not connected to a Firebase project.</p>';
+                    reportContainer.innerHTML = '<p class="text-red-500 text-center">Firebase configuration is missing. Please add it to the code.</p>';
                     return;
                 }
 
