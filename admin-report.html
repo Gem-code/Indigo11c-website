@@ -134,6 +134,13 @@
         // Initialize the app with authentication
         async function initializeAppWithAuth() {
             try {
+                // Check if Firebase config is available
+                if (!firebaseConfig) {
+                    console.error("Firebase config is missing.");
+                    reportContainer.innerHTML = '<p class="text-red-500 text-center">Firebase configuration is missing. This app is not connected to a Firebase project.</p>';
+                    return;
+                }
+
                 // Initialize Firebase services
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
