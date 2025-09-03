@@ -105,16 +105,18 @@
             const showings = [];
             const formatter = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-            showings.push({
-                id: `wed_${wednesday.getFullYear()}_${wednesday.getMonth() + 1}_${wednesday.getDate()}`,
-                date: formatter.format(wednesday),
-                time: '6:00 PM - 7:00 PM'
-            });
-
+            // Pushing Sunday first to show it first on the page
             showings.push({
                 id: `sun_${sunday.getFullYear()}_${sunday.getMonth() + 1}_${sunday.getDate()}`,
                 date: formatter.format(sunday),
                 time: '1:00 PM - 3:00 PM'
+            });
+
+            // Pushing Wednesday second
+            showings.push({
+                id: `wed_${wednesday.getFullYear()}_${wednesday.getMonth() + 1}_${wednesday.getDate()}`,
+                date: formatter.format(wednesday),
+                time: '6:00 PM - 7:00 PM'
             });
 
             return showings;
