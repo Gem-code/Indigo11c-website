@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -13,6 +13,11 @@
         }
         .container {
             max-width: 800px;
+        }
+        .booking-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
     </style>
 </head>
@@ -32,19 +37,10 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Enable debug logging for Firestore
-        setLogLevel('debug');
-
-        // Global variables for Firebase
-        let db;
-        let auth;
-        const SHOWINGS_COLLECTION = 'showings';
-
-        // **1. PASTE YOUR FIREBASE CONFIG HERE**
-        // This configuration is unique to your project.
+        
+        // Firebase configuration (provided by user)
         const firebaseConfig = {
             apiKey: "AIzaSyDsTvu7ikH4I9ToUIOfqRTJGrHIl2fzmKQ",
             authDomain: "indigo11cappointment.firebaseapp.com",
@@ -54,9 +50,13 @@
             appId: "1:757509071845:web:6bdf9a5e25e324d9f2850c",
             measurementId: "G-8TBMDP8QVW"
         };
-
-        // 2. DO NOT CHANGE ANYTHING BELOW THIS LINE
-        // The code below is designed to work with your configuration.
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = "indigo11cappointment";
+        const SHOWINGS_COLLECTION = 'showings';
 
         // UI elements
         const reportContainer = document.getElementById('report-container');
@@ -75,10 +75,11 @@
             const sunday = getNextDay(0); // 0 is Sunday
             
             // To ensure we always show the next two upcoming dates, adjust if today is the day of an open house
-            if (wednesday.toDateString() === new Date().toDateString()) {
+            const today = new Date();
+            if (wednesday.toDateString() === today.toDateString()) {
                 wednesday.setDate(wednesday.getDate() + 7);
             }
-            if (sunday.toDateString() === new Date().toDateString()) {
+            if (sunday.toDateString() === today.toDateString()) {
                 sunday.setDate(sunday.getDate() + 7);
             }
             
@@ -105,69 +106,61 @@
             const showingsData = generateShowingsData();
             reportContainer.innerHTML = ''; // Clear the container
 
-            showingsData.forEach(showing => {
-                const showingsSection = document.createElement('div');
-                showingsSection.className = 'bg-white p-6 rounded-lg shadow-md';
-                showingsSection.innerHTML = `
-                    <h2 class="text-xl font-semibold text-gray-800 mb-2">${showing.date} - ${showing.time}</h2>
-                    <ul id="bookings-list-${showing.id}" class="space-y-2 text-gray-700 list-disc list-inside ml-4">
-                        <li class="text-gray-500">No bookings yet.</li>
-                    </ul>
-                `;
-                reportContainer.appendChild(showingsSection);
+            // Sign in anonymously to authenticate with Firestore
+            signInAnonymously(auth).then(() => {
+                showingsData.forEach(showing => {
+                    const showingsSection = document.createElement('div');
+                    showingsSection.className = 'bg-white p-6 rounded-lg shadow-md';
+                    showingsSection.innerHTML = `
+                        <h2 class="text-xl font-semibold text-gray-800 mb-2">${showing.date} - ${showing.time}</h2>
+                        <ul id="bookings-list-${showing.id}" class="space-y-2 text-gray-700 list-disc list-inside ml-4">
+                            <li class="text-gray-500">No bookings yet.</li>
+                        </ul>
+                    `;
+                    reportContainer.appendChild(showingsSection);
 
-                // Listen for real-time updates to the bookings subcollection
-                const bookingsCollectionPath = `artifacts/${firebaseConfig.projectId}/public/data/${SHOWINGS_COLLECTION}/${showing.id}/bookings`;
-                const bookingsQuery = collection(db, bookingsCollectionPath);
-                const bookingsList = document.getElementById(`bookings-list-${showing.id}`);
+                    // Listen for real-time updates to the bookings subcollection
+                    const bookingsCollectionPath = `artifacts/${appId}/public/data/${SHOWINGS_COLLECTION}/${showing.id}/bookings`;
+                    const bookingsQuery = collection(db, bookingsCollectionPath);
+                    const bookingsList = document.getElementById(`bookings-list-${showing.id}`);
 
-                onSnapshot(bookingsQuery, (snapshot) => {
-                    if (snapshot.empty) {
-                        bookingsList.innerHTML = '<li class="text-gray-500">No bookings yet.</li>';
-                    } else {
-                        bookingsList.innerHTML = '';
-                        snapshot.forEach(doc => {
-                            const data = doc.data();
+                    onSnapshot(bookingsQuery, (snapshot) => {
+                        bookingsList.innerHTML = ''; // Clear existing bookings
+
+                        if (snapshot.empty) {
+                            bookingsList.innerHTML = '<li class="text-gray-500">No bookings yet.</li>';
+                            return;
+                        }
+
+                        snapshot.forEach((doc) => {
+                            const booking = doc.data();
                             const listItem = document.createElement('li');
-                            listItem.textContent = `${data.name} (${data.email})`;
+                            listItem.className = 'booking-item text-sm sm:text-base';
+                            listItem.innerHTML = `
+                                <div>
+                                    <span class="font-medium">${booking.name}</span>
+                                    <span class="text-gray-500">(${booking.email})</span>
+                                </div>
+                            `;
                             bookingsList.appendChild(listItem);
                         });
-                    }
-                }, (error) => {
-                    console.error("Error fetching bookings:", error);
-                    bookingsList.innerHTML = `<li class="text-red-500">Error loading bookings.</li>`;
+                    }, (error) => {
+                        console.error("Error fetching bookings: ", error);
+                        bookingsList.innerHTML = '<li class="text-red-500">Error loading bookings.</li>';
+                    });
                 });
+            }).catch(error => {
+                console.error("Authentication failed: ", error);
+                reportContainer.innerHTML = '<div class="text-center text-red-500 p-8">Error initializing app with authentication.</div>';
             });
         }
 
-        // Initialize the app with authentication
-        async function initializeAppWithAuth() {
-            try {
-                // Check if Firebase config is available
-                if (Object.keys(firebaseConfig).length === 0 && firebaseConfig.constructor === Object) {
-                    console.error("Firebase config is missing.");
-                    reportContainer.innerHTML = '<p class="text-red-500 text-center">Firebase configuration is missing. Please add it to the code.</p>';
-                    return;
-                }
-
-                // Initialize Firebase services
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // Authenticate the user
-                await signInAnonymously(auth);
-                
-                // Fetch and render the report after successful authentication
-                fetchAndRenderReport();
-
-            } catch (error) {
-                console.error("Error initializing app with authentication:", error);
-                reportContainer.innerHTML = '<p class="text-red-500 text-center">Failed to connect to Firebase. Please check your configuration.</p>';
-            }
+        // Start the process
+        if (firebaseConfig.apiKey && firebaseConfig.authDomain) {
+            fetchAndRenderReport();
+        } else {
+            reportContainer.innerHTML = '<div class="text-center text-red-500 p-8">Firebase configuration is missing. This app is not connected to a Firebase project.</div>';
         }
-        
-        initializeAppWithAuth();
     </script>
 </body>
 </html>
